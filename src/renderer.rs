@@ -1,6 +1,7 @@
 use nannou::prelude::*;
 
 use crate::core::{Op, OpSet, OpSetType, OpType, Options};
+use crate::filler::get_filler;
 use OpSetType::*;
 use OpType::*;
 
@@ -9,6 +10,88 @@ pub fn line(x1: f32, y1: f32, x2: f32, y2: f32, o: &Options) -> OpSet {
         ops_type: Path,
         ops: _double_line(x1, y1, x2, y2, o),
     }
+}
+
+pub fn rectangle(x: f32, y: f32, width: f32, height: f32, options: &Options) -> OpSet {
+    let points = vec![
+        pt2(x, y),
+        pt2(x + width, y),
+        pt2(x + width, y + height),
+        pt2(x, y + height),
+    ];
+    return polygon(points, options);
+}
+
+fn polygon(points: Vec<Point2>, options: &Options) -> OpSet {
+    return linear_path(points, true, options);
+}
+
+pub fn solid_fill_polygon(polygon_list: Vec<Vec<Point2>>, options: &Options) -> OpSet {
+    let mut ops = vec![];
+    for points in polygon_list.iter() {
+        if points.len() > 2 {
+            let offset = options.max_randomness_offset;
+            ops.push(Op {
+                op: Move,
+                data: vec![
+                    points[0].x + _offset_opt(offset, options, 1.0),
+                    points[0].y + _offset_opt(offset, options, 1.0),
+                ],
+            });
+            for i in 1..points.len() {
+                ops.push(Op {
+                    op: LineTo,
+                    data: vec![
+                        points[i].x + _offset_opt(offset, options, 1.0),
+                        points[i].y + _offset_opt(offset, options, 1.0),
+                    ],
+                })
+            }
+        }
+    }
+    OpSet {
+        ops_type: FillPath,
+        ops,
+    }
+}
+
+pub fn pattern_fill_polygon(polygon_list: Vec<Vec<Point2>>, options: &Options) -> OpSet {
+    return get_filler(options).fill_polygons(polygon_list, options);
+}
+
+fn linear_path(points: Vec<Point2>, close: bool, options: &Options) -> OpSet {
+    let len = points.len();
+    if len > 2 {
+        let mut ops = vec![];
+        for i in 0..(len - 1) {
+            ops.extend(_double_line(
+                points[i].x,
+                points[i].y,
+                points[i + 1].x,
+                points[i + 1].y,
+                options,
+            ));
+        }
+        if close {
+            ops.extend(_double_line(
+                points[len - 1].x,
+                points[len - 1].y,
+                points[0].x,
+                points[0].y,
+                options,
+            ));
+        }
+        return OpSet {
+            ops_type: Path,
+            ops,
+        };
+    } else if len == 2 {
+        return line(points[0].x, points[0].y, points[1].x, points[1].y, options);
+    }
+    return OpSet {
+        ops_type: Path,
+        ops: vec![],
+    };
 }
 
 pub fn _double_line(x1: f32, y1: f32, x2: f32, y2: f32, o: &Options) -> Vec<Op> {

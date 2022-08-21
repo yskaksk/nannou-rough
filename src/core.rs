@@ -14,7 +14,7 @@ pub enum OpSetType {
     FillSketch,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum FillStyle {
     Solid,
     Zigzag,
@@ -40,6 +40,8 @@ pub struct Options {
     pub fill_style: FillStyle,
     pub hachure_angle: f32,
     pub hachure_gap: f32,
+    pub stroke_width: f32,
+    pub fill_weight: f32,
 }
 
 impl Options {
@@ -53,8 +55,24 @@ impl Options {
             fill: false,
             fill_style: Solid,
             hachure_angle: 45.0,
-            hachure_gap: 0.0,
+            hachure_gap: 10.0,
+            stroke_width: 2.0,
+            fill_weight: 3.0,
         };
+    }
+
+    pub fn set_fill_style(&mut self, style: &str) -> &mut Self {
+        match style {
+            "Solid" => self.fill_style = Solid,
+            "Hachure" => self.fill_style = Hachure,
+            _ => unimplemented!(),
+        }
+        return self;
+    }
+
+    pub fn set_fill(&mut self) -> &mut Self {
+        self.fill = true;
+        return self;
     }
 }
 
@@ -88,6 +106,7 @@ impl Drawable {
     pub fn draw(&self, draw: &Draw) {
         let sets = self.sets.clone();
         let mut builder = nannou::geom::path::Builder::new().with_svg();
+        let mut weight = 3.0;
         for drawing in sets.iter() {
             match drawing.ops_type {
                 Path => {
@@ -111,14 +130,50 @@ impl Drawable {
                     }
                 }
                 FillPath => {
-                    unimplemented!()
+                    // TODO: fill 対応
+                    for item in drawing.ops.iter() {
+                        let data = item.data.clone();
+                        match item.op {
+                            Move => {
+                                builder.move_to([data[0], data[1]].into());
+                            }
+                            BcurveTo => {
+                                builder.cubic_bezier_to(
+                                    [data[0], data[1]].into(),
+                                    [data[2], data[3]].into(),
+                                    [data[4], data[5]].into(),
+                                );
+                            }
+                            LineTo => {
+                                builder.line_to([data[0], data[1]].into());
+                            }
+                        }
+                    }
                 }
                 FillSketch => {
-                    unimplemented!()
+                    weight = self.options.fill_weight;
+                    for item in drawing.ops.iter() {
+                        let data = item.data.clone();
+                        match item.op {
+                            Move => {
+                                builder.move_to([data[0], data[1]].into());
+                            }
+                            BcurveTo => {
+                                builder.cubic_bezier_to(
+                                    [data[0], data[1]].into(),
+                                    [data[2], data[3]].into(),
+                                    [data[4], data[5]].into(),
+                                );
+                            }
+                            LineTo => {
+                                builder.line_to([data[0], data[1]].into());
+                            }
+                        }
+                    }
                 }
             }
         }
         let path = builder.build();
-        draw.path().stroke().events(path.iter());
+        draw.path().stroke().weight(weight).events(path.iter());
     }
 }

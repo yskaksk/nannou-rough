@@ -11,3 +11,7 @@ nannou = "0.18"
 [[example]]
 name = "line"
 path = "examples/line.rs"
+
+[[example]]
+name = "rectangle"
+path = "examples/rectangle.rs"
