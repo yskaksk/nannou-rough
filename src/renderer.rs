@@ -1,6 +1,6 @@
 use nannou::prelude::*;
 
-use crate::core::{Op, OpSet, OpSetType, OpType, Options};
+use crate::core::{FillStyle, Op, OpSet, OpSetType, OpType, Options};
 use crate::filler::get_filler;
 use OpSetType::*;
 use OpType::*;
@@ -92,6 +92,196 @@ fn linear_path(points: Vec<Point2>, close: bool, options: &Options) -> OpSet {
         ops_type: Path,
         ops: vec![],
     };
+}
+
+#[derive(Clone)]
+pub struct EllipseResult {
+    pub opset: OpSet,
+    pub estimated_points: Vec<Point2>,
+}
+
+#[derive(Copy, Clone)]
+pub struct EllipseParams {
+    rx: f32,
+    ry: f32,
+    increment: f32,
+}
+
+pub fn generate_ellipse_params(width: f32, height: f32, options: &Options) -> EllipseParams {
+    let psq =
+        (f32::PI() * 2.0 * (((width * 0.5).powi(2) + (height * 0.5).powi(2)) * 0.5).sqrt()).sqrt();
+    let step_count = (options.curve_step_count as f32)
+        .max(psq * options.curve_step_count as f32 / 200.0.sqrt())
+        .ceil();
+    let increment = 2.0 * f32::PI() / step_count;
+    let mut rx = (width / 2.0).abs();
+    let mut ry = (height / 2.0).abs();
+    let curve_fit_randomness = 1.0 - options.curve_fitting;
+    rx += _offset_opt(rx * curve_fit_randomness, options, 1.0);
+    ry += _offset_opt(ry * curve_fit_randomness, options, 1.0);
+    return EllipseParams { increment, rx, ry };
+}
+
+pub fn ellipse_with_params(
+    x: f32,
+    y: f32,
+    options: &Options,
+    ellipse_params: EllipseParams,
+) -> EllipseResult {
+    let overlap =
+        ellipse_params.increment * _offset(0.1, _offset(0.4, 1.0, options, 1.0), options, 1.0);
+    let (ap1, cp1) = _compute_ellipse_points(
+        ellipse_params.increment,
+        x,
+        y,
+        ellipse_params.rx,
+        ellipse_params.ry,
+        1.0,
+        overlap,
+        options,
+    );
+    let mut o1 = _curve(ap1, None, options);
+    if !options.disable_multi_stroke && (options.roughness != 0.0) {
+        let (ap2, _) = _compute_ellipse_points(
+            ellipse_params.increment,
+            x,
+            y,
+            ellipse_params.rx,
+            ellipse_params.ry,
+            1.5,
+            0.0,
+            options,
+        );
+        o1.extend(_curve(ap2, None, options));
+    }
+    let ops_type = match options.fill_style {
+        FillStyle::Solid => OpSetType::FillPath,
+        _ => OpSetType::Path,
+    };
+    return EllipseResult {
+        estimated_points: cp1,
+        opset: OpSet { ops_type, ops: o1 },
+    };
+}
+
+fn _compute_ellipse_points(
+    increment: f32,
+    cx: f32,
+    cy: f32,
+    rx: f32,
+    ry: f32,
+    offset: f32,
+    overlap: f32,
+    options: &Options,
+) -> (Vec<Point2>, Vec<Point2>) {
+    let core_only = options.roughness == 0.0;
+    let mut core_points: Vec<Point2> = vec![];
+    let mut all_points: Vec<Point2> = vec![];
+
+    if core_only {
+        let increment = increment / 4.0;
+        all_points.push(pt2(
+            cx + rx * (-increment).cos(),
+            cy + ry * (-increment).sin(),
+        ));
+        let mut angle = 0.0;
+        while angle <= f32::PI() * 2.0 {
+            let p = pt2(cx + rx * angle.cos(), cy + ry * angle.sin());
+            core_points.push(p);
+            all_points.push(p);
+            angle += angle + increment;
+        }
+        // angle = 0
+        all_points.push(pt2(cx + rx, cy));
+        all_points.push(pt2(cx + rx * increment.cos(), cy + ry * increment.sin()));
+    } else {
+        let rad_offset = _offset_opt(0.5, options, 1.0) - 0.5 * f32::PI();
+        all_points.push(pt2(
+            _offset_opt(offset, options, 1.0) + cx + 0.9 * rx * (rad_offset - increment).cos(),
+            _offset_opt(offset, options, 1.0) + cy + 0.9 * ry * (rad_offset - increment).sin(),
+        ));
+        let end_angle = f32::PI() * 2.0 + rad_offset - 0.01;
+        let mut angle = rad_offset;
+        while angle < end_angle {
+            let p = pt2(
+                _offset_opt(offset, options, 1.0) + cx + rx * angle.cos(),
+                _offset_opt(offset, options, 1.0) + cy + ry * angle.sin(),
+            );
+            core_points.push(p);
+            all_points.push(p);
+            angle += increment;
+        }
+        all_points.push(pt2(
+            _offset_opt(offset, options, 1.0) + cx + rx * (rad_offset + overlap * 0.5).cos(),
+            _offset_opt(offset, options, 1.0) + cy + ry * (rad_offset + overlap * 0.5).sin(),
+        ));
+        all_points.push(pt2(
+            _offset_opt(offset, options, 1.0) + cx + 0.98 * rx * (rad_offset + overlap).cos(),
+            _offset_opt(offset, options, 1.0) + cy + 0.98 * ry * (rad_offset + overlap).sin(),
+        ));
+        all_points.push(pt2(
+            _offset_opt(offset, options, 1.0) + cx + 0.9 * rx * (rad_offset + overlap * 0.5).cos(),
+            _offset_opt(offset, options, 1.0) + cy + 0.9 * ry * (rad_offset + overlap * 0.5).sin(),
+        ));
+    }
+    return (all_points, core_points);
+}
+
+fn _curve(points: Vec<Point2>, close_point: Option<Point2>, options: &Options) -> Vec<Op> {
+    let len = points.len();
+    let mut ops: Vec<Op> = vec![];
+    if len > 3 {
+        let s = 1.0 - options.curve_tightness;
+        ops.push(Op {
+            op: OpType::Move,
+            data: vec![points[1].x, points[1].y],
+        });
+        for i in 1..(len - 2) {
+            let cached_vert_array = points[i];
+            ops.push(Op {
+                op: OpType::BcurveTo,
+                data: vec![
+                    cached_vert_array.x + (s * points[i + 1].x - s * points[i - 1].x) / 6.0,
+                    cached_vert_array.y + (s * points[i + 1].y - s * points[i - 1].y) / 6.0,
+                    points[i + 1].x + (s * points[i].x - s * points[i + 2].x) / 6.0,
+                    points[i + 1].y + (s * points[i].y - s * points[i + 2].y) / 6.0,
+                    points[i + 1].x,
+                    points[i + 1].y,
+                ],
+            });
+        }
+        if let Some(clp) = close_point {
+            let ro = options.max_randomness_offset;
+            ops.push(Op {
+                op: OpType::LineTo,
+                data: vec![
+                    clp.x + _offset_opt(ro, options, 1.0),
+                    clp.y + _offset_opt(ro, options, 1.0),
+                ],
+            })
+        }
+    } else if len == 3 {
+        ops.push(Op {
+            op: OpType::Move,
+            data: vec![points[1].x, points[1].y],
+        });
+        ops.push(Op {
+            op: OpType::BcurveTo,
+            data: vec![
+                points[1].x,
+                points[1].y,
+                points[2].x,
+                points[2].y,
+                points[2].x,
+                points[2].y,
+            ],
+        });
+    } else if len == 2 {
+        ops.extend(
+            _double_line(points[0].x, points[0].y, points[1].x, points[1].y, options).into_iter(),
+        );
+    }
+    return ops;
 }
 
 pub fn _double_line(x1: f32, y1: f32, x2: f32, y2: f32, o: &Options) -> Vec<Op> {

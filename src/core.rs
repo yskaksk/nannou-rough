@@ -42,6 +42,9 @@ pub struct Options {
     pub hachure_gap: f32,
     pub stroke_width: f32,
     pub fill_weight: f32,
+    pub curve_step_count: usize,
+    pub curve_fitting: f32,
+    pub curve_tightness: f32,
 }
 
 impl Options {
@@ -58,6 +61,9 @@ impl Options {
             hachure_gap: 10.0,
             stroke_width: 2.0,
             fill_weight: 3.0,
+            curve_step_count: 9,
+            curve_fitting: 0.95,
+            curve_tightness: 0.0,
         };
     }
 
