@@ -15,3 +15,7 @@ path = "examples/line.rs"
 [[example]]
 name = "rectangle"
 path = "examples/rectangle.rs"
+
+[[example]]
+name = "ellipse"
+path = "examples/ellipse.rs"
