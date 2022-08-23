@@ -19,3 +19,7 @@ path = "examples/rectangle.rs"
 [[example]]
 name = "ellipse"
 path = "examples/ellipse.rs"
+
+[[example]]
+name = "linear_path"
+path = "examples/linear_path.rs"

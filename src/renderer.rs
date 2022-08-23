@@ -59,7 +59,7 @@ pub fn pattern_fill_polygon(polygon_list: Vec<Vec<Point2>>, options: &Options) -
     return get_filler(options).fill_polygons(polygon_list, options);
 }
 
-fn linear_path(points: Vec<Point2>, close: bool, options: &Options) -> OpSet {
+pub fn linear_path(points: Vec<Point2>, close: bool, options: &Options) -> OpSet {
     let len = points.len();
     if len > 2 {
         let mut ops = vec![];

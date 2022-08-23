@@ -2,8 +2,8 @@ use nannou::prelude::*;
 
 use crate::core::{Drawable, FillStyle, OpSet, Options};
 use crate::renderer::{
-    ellipse_with_params, generate_ellipse_params, line, pattern_fill_polygon, rectangle,
-    solid_fill_polygon,
+    ellipse_with_params, generate_ellipse_params, line, linear_path, pattern_fill_polygon,
+    rectangle, solid_fill_polygon,
 };
 
 pub struct RoughGenerator {}
@@ -55,5 +55,24 @@ impl RoughGenerator {
         }
         paths.push(ellipse_response.opset);
         return Drawable::new("ellipse", options, paths);
+    }
+
+    pub fn linear_path(points: Vec<Point2>, options: Options) -> Drawable {
+        let path = linear_path(points, false, &options);
+        return Drawable::new("linear_path", options, vec![path]);
+    }
+
+    pub fn polygon(points: Vec<Point2>, options: Options) -> Drawable {
+        let mut paths: Vec<OpSet> = vec![];
+        let outline = linear_path(points.clone(), true, &options);
+        if options.fill {
+            match options.fill_style {
+                FillStyle::Solid => paths.push(solid_fill_polygon(vec![points.clone()], &options)),
+                _ => paths.push(pattern_fill_polygon(vec![points.clone()], &options)),
+            }
+        }
+        // TODO: add options.stroke
+        paths.push(outline);
+        return Drawable::new("polygon", options, paths);
     }
 }
