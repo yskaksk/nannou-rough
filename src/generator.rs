@@ -2,8 +2,8 @@ use nannou::prelude::*;
 
 use crate::core::{Drawable, FillStyle, OpSet, Options};
 use crate::renderer::{
-    ellipse_with_params, generate_ellipse_params, line, linear_path, pattern_fill_polygon,
-    rectangle, solid_fill_polygon,
+    arc, ellipse_with_params, generate_ellipse_params, line, linear_path, pattern_fill_arc,
+    pattern_fill_polygon, rectangle, solid_fill_polygon,
 };
 
 pub struct RoughGenerator {}
@@ -74,5 +74,32 @@ impl RoughGenerator {
         // TODO: add options.stroke
         paths.push(outline);
         return Drawable::new("polygon", options, paths);
+    }
+
+    pub fn arc(
+        x: f32,
+        y: f32,
+        width: f32,
+        height: f32,
+        start: f32,
+        stop: f32,
+        closed: bool,
+        options: Options,
+    ) -> Drawable {
+        let mut paths: Vec<OpSet> = vec![];
+        let outline = arc(x, y, width, height, start, stop, closed, true, &options);
+        if closed && options.fill {
+            match options.fill_style {
+                FillStyle::Solid => {
+                    unimplemented!()
+                }
+                _ => {
+                    paths.push(pattern_fill_arc(x, y, width, height, start, stop, &options));
+                }
+            }
+        }
+        // TODO: stroke
+        paths.push(outline);
+        return Drawable::new("arc", options, paths);
     }
 }

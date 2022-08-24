@@ -94,6 +94,141 @@ pub fn linear_path(points: Vec<Point2>, close: bool, options: &Options) -> OpSet
     };
 }
 
+pub fn arc(
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    start: f32,
+    stop: f32,
+    closed: bool,
+    rough_closure: bool,
+    options: &Options,
+) -> OpSet {
+    let cx = x;
+    let cy = y;
+    let mut rx = (width / 2.0).abs();
+    let mut ry = (height / 2.0).abs();
+    rx += _offset_opt(rx * 0.01, options, 1.0);
+    ry += _offset_opt(ry * 0.01, options, 1.0);
+    let mut start = start;
+    let mut stop = stop;
+    while start < 0.0 {
+        start += f32::PI() * 2.0;
+        stop += f32::PI() * 2.0;
+    }
+    if (stop - start) > f32::PI() * 2.0 {
+        start = 0.0;
+        stop = f32::PI() * 2.0;
+    }
+    let ellipse_inc = f32::PI() * 2.0 / options.curve_step_count as f32;
+    let arc_inc = (ellipse_inc / 2.0).min((stop - start) / 2.0);
+    let mut ops = _arc(arc_inc, cx, cy, rx, ry, start, stop, 1.0, options);
+    if !options.disable_multi_stroke {
+        let ops2 = _arc(arc_inc, cx, cy, rx, ry, start, stop, 1.5, options);
+        ops.extend(ops2);
+    }
+    if closed {
+        if rough_closure {
+            ops.extend(_double_line(
+                cx,
+                cy,
+                cx + rx * start.cos(),
+                cy + ry * start.sin(),
+                options,
+            ));
+            ops.extend(_double_line(
+                cx,
+                cy,
+                cx + rx * stop.cos(),
+                cy + ry * stop.sin(),
+                options,
+            ));
+        } else {
+            ops.push(Op {
+                op: OpType::LineTo,
+                data: vec![cx, cy],
+            });
+            ops.push(Op {
+                op: OpType::LineTo,
+                data: vec![cx + rx * start.cos(), cy + ry * start.sin()],
+            });
+        }
+    }
+    return OpSet {
+        ops_type: OpSetType::Path,
+        ops,
+    };
+}
+
+fn _arc(
+    increment: f32,
+    cx: f32,
+    cy: f32,
+    rx: f32,
+    ry: f32,
+    start: f32,
+    stop: f32,
+    offset: f32,
+    options: &Options,
+) -> Vec<Op> {
+    let rad_offset = start + _offset_opt(0.1, options, 1.0);
+    let mut points: Vec<Point2> = vec![];
+    points.push(pt2(
+        _offset_opt(offset, options, 1.0) + cx + 0.9 * rx * (rad_offset - increment).cos(),
+        _offset_opt(offset, options, 1.0) + cy + 0.9 * ry * (rad_offset - increment).sin(),
+    ));
+    let mut angle = rad_offset;
+    assert!(increment > 0.0);
+    while angle <= stop {
+        points.push(pt2(
+            _offset_opt(offset, options, 1.0) + cx + rx * angle.cos(),
+            _offset_opt(offset, options, 1.0) + cy + ry * angle.sin(),
+        ));
+        angle += increment;
+    }
+    points.push(pt2(cx + rx * stop.cos(), cy + ry * stop.sin()));
+    points.push(pt2(cx + rx * stop.cos(), cy + ry * stop.sin()));
+    return _curve(points, None, options);
+}
+
+pub fn pattern_fill_arc(
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    start: f32,
+    stop: f32,
+    options: &Options,
+) -> OpSet {
+    let cx = x;
+    let cy = y;
+    let mut rx = (width / 2.0).abs();
+    let mut ry = (height / 2.0).abs();
+    rx += _offset_opt(rx * 0.01, options, 1.0);
+    ry += _offset_opt(ry * 0.01, options, 1.0);
+    let mut start = start;
+    let mut stop = stop;
+    while start < 0.0 {
+        start += f32::PI() * 2.0;
+        stop += f32::PI() * 2.0;
+    }
+    if (stop - start) > f32::PI() * 2.0 {
+        start = 0.0;
+        stop = f32::PI();
+    }
+    let increment = (stop - start) / options.curve_step_count as f32;
+    let mut points: Vec<Point2> = vec![];
+    let mut angle = start;
+    while angle <= stop {
+        points.push(pt2(cx + rx * angle.cos(), cy + ry * angle.sin()));
+        angle += increment;
+    }
+    points.push(pt2(cx + rx * stop.cos(), cy + ry * stop.sin()));
+    points.push(pt2(cx, cy));
+    return pattern_fill_polygon(vec![points], options);
+}
+
 #[derive(Clone)]
 pub struct EllipseResult {
     pub opset: OpSet,
@@ -189,7 +324,7 @@ fn _compute_ellipse_points(
             let p = pt2(cx + rx * angle.cos(), cy + ry * angle.sin());
             core_points.push(p);
             all_points.push(p);
-            angle += angle + increment;
+            angle += increment;
         }
         // angle = 0
         all_points.push(pt2(cx + rx, cy));

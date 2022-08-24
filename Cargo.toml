@@ -23,3 +23,7 @@ path = "examples/ellipse.rs"
 [[example]]
 name = "linear_path"
 path = "examples/linear_path.rs"
+
+[[example]]
+name = "arc"
+path = "examples/arc.rs"
