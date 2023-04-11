@@ -1,4 +1,9 @@
+use nannou::color::{self, DefaultScalar, LinSrgba};
 use nannou::prelude::*;
+
+use nannou::lyon::tessellation::FillRule;
+
+pub type ColorScalar = DefaultScalar;
 
 #[derive(Copy, Clone, Debug)]
 pub enum OpType {
@@ -45,11 +50,16 @@ pub struct Options {
     pub curve_step_count: usize,
     pub curve_fitting: f32,
     pub curve_tightness: f32,
+    pub color: LinSrgba<ColorScalar>,
+    pub fill_color: LinSrgba<ColorScalar>,
 }
 
 impl Options {
     pub fn new() -> Self {
-        return Options {
+        Options::default()
+    }
+
+    pub fn default() -> Self { return Options {
             roughness: 1.0,
             bowing: 1.5,
             disable_multi_stroke: false,
@@ -64,21 +74,9 @@ impl Options {
             curve_step_count: 9,
             curve_fitting: 0.95,
             curve_tightness: 0.0,
+            color: color::lin_srgba(0.0, 0.0, 0.0, 1.0),
+            fill_color: color::lin_srgba(0.0, 0.0, 0.0, 1.0),
         };
-    }
-
-    pub fn set_fill_style(&mut self, style: &str) -> &mut Self {
-        match style {
-            "Solid" => self.fill_style = Solid,
-            "Hachure" => self.fill_style = Hachure,
-            _ => unimplemented!(),
-        }
-        return self;
-    }
-
-    pub fn set_fill(&mut self) -> &mut Self {
-        self.fill = true;
-        return self;
     }
 }
 
@@ -111,11 +109,11 @@ impl Drawable {
     }
     pub fn draw(&self, draw: &Draw) {
         let sets = self.sets.clone();
-        let mut builder = nannou::geom::path::Builder::new().with_svg();
-        let mut weight = 3.0;
         for drawing in sets.iter() {
             match drawing.ops_type {
                 Path => {
+                    let mut builder = nannou::geom::path::Builder::new().with_svg();
+                    // TODO: add line-dash
                     for item in drawing.ops.iter() {
                         let data = item.data.clone();
                         match item.op {
@@ -134,9 +132,16 @@ impl Drawable {
                             }
                         }
                     }
+                    let path = builder.build();
+                    let weight = self.options.stroke_width;
+                    draw.path()
+                        .stroke()
+                        .weight(weight)
+                        .color(self.options.color)
+                        .events(path.iter());
                 }
                 FillPath => {
-                    // TODO: fill 対応
+                    let mut builder = nannou::geom::path::Builder::new().with_svg();
                     for item in drawing.ops.iter() {
                         let data = item.data.clone();
                         match item.op {
@@ -155,9 +160,20 @@ impl Drawable {
                             }
                         }
                     }
+                    let path = builder.build();
+                    //let weight = self.options.fill_weight;
+                    let fill_rule = match self.shape.as_str() {
+                        "curve" | "polygon" | "path" => FillRule::EvenOdd,
+                        _ => FillRule::NonZero
+                    };
+                    draw.path()
+                        .fill()
+                        .fill_rule(fill_rule)
+                        .color(self.options.fill_color)
+                        .events(path.iter());
                 }
                 FillSketch => {
-                    weight = self.options.fill_weight;
+                    let mut builder = nannou::geom::path::Builder::new().with_svg();
                     for item in drawing.ops.iter() {
                         let data = item.data.clone();
                         match item.op {
@@ -176,10 +192,15 @@ impl Drawable {
                             }
                         }
                     }
+                    let path = builder.build();
+                    let weight = self.options.fill_weight;
+                    draw.path()
+                        .stroke()
+                        .weight(weight)
+                        .color(self.options.fill_color)
+                        .events(path.iter());
                 }
             }
         }
-        let path = builder.build();
-        draw.path().stroke().weight(weight).events(path.iter());
     }
 }

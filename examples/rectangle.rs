@@ -1,6 +1,5 @@
 use nannou::prelude::*;
 
-use nannou_rough::core::Options;
 use nannou_rough::generator::RoughGenerator;
 
 fn main() {
@@ -12,8 +11,12 @@ fn view(app: &App, frame: Frame) {
     let win = app.window_rect();
     if frame.nth() % 10 == 0 {
         draw.background().color(BEIGE);
-        let mut options = Options::new();
-        options.set_fill().set_fill_style("Hachure");
+        let mut rg = RoughGenerator::new();
+        rg.fill()
+            .fill_style("Hachure")
+            .stroke_width(2.0)
+            .fill_weight(4.0)
+            .fill_color(GREEN);
         let n = 8;
         for i in 0..n {
             for j in 0..n {
@@ -32,14 +35,8 @@ fn view(app: &App, frame: Frame) {
                     if y < win.bottom() {
                         y += win.h();
                     }
-                    RoughGenerator::rectangle(
-                        x,
-                        y,
-                        0.9 * win.w() / n as f32,
-                        0.9 * win.h() / n as f32,
-                        options,
-                    )
-                    .draw(&draw);
+                    rg.rectangle(x, y, 0.9 * win.w() / n as f32, 0.9 * win.h() / n as f32)
+                        .draw(&draw);
                 }
             }
         }

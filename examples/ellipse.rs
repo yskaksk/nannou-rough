@@ -1,6 +1,5 @@
 use nannou::prelude::*;
 
-use nannou_rough::core::Options;
 use nannou_rough::generator::RoughGenerator;
 
 fn main() {
@@ -11,14 +10,14 @@ fn view(app: &App, frame: Frame) {
     let draw = app.draw();
     if frame.nth() % 10 == 0 {
         draw.background().color(BEIGE);
-        let mut options = Options::new();
-        options.set_fill().set_fill_style("Hachure");
         let d = 250.0;
         let r = 400.0;
-        RoughGenerator::ellipse(-d, d, r, r, options).draw(&draw);
-        RoughGenerator::ellipse(-d, -d, r, r, options).draw(&draw);
-        RoughGenerator::ellipse(d, -d, r, r, options).draw(&draw);
-        RoughGenerator::ellipse(d, d, r, r, options).draw(&draw);
+        let mut rg = RoughGenerator::new();
+        rg.fill().fill_style("Hachure");
+        rg.ellipse(-d, d, r, r).draw(&draw);
+        rg.ellipse(-d, -d, r, r).draw(&draw);
+        rg.ellipse(d, -d, r, r).draw(&draw);
+        rg.ellipse(d, d, r, r).draw(&draw);
     }
     draw.to_frame(app, &frame).unwrap();
 }
