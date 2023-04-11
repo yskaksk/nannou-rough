@@ -59,7 +59,8 @@ impl Options {
         Options::default()
     }
 
-    pub fn default() -> Self { return Options {
+    pub fn default() -> Self {
+        return Options {
             roughness: 1.0,
             bowing: 1.5,
             disable_multi_stroke: false,
@@ -93,27 +94,28 @@ pub struct OpSet {
 }
 
 #[derive(Clone)]
-pub struct Drawable {
+pub struct Drawable<'a> {
     pub shape: String,
     pub options: Options,
     pub sets: Vec<OpSet>,
+    draw: &'a Draw,
 }
 
-impl Drawable {
-    pub fn new(shape: &str, options: Options, sets: Vec<OpSet>) -> Self {
+impl<'a> Drawable<'a> {
+    pub fn new(shape: &str, options: Options, sets: Vec<OpSet>, draw: &'a Draw) -> Self {
         return Drawable {
             shape: shape.to_string(),
             options,
             sets,
+            draw,
         };
     }
-    pub fn draw(&self, draw: &Draw) {
+    pub fn draw(&self) {
         let sets = self.sets.clone();
         for drawing in sets.iter() {
             match drawing.ops_type {
                 Path => {
                     let mut builder = nannou::geom::path::Builder::new().with_svg();
-                    // TODO: add line-dash
                     for item in drawing.ops.iter() {
                         let data = item.data.clone();
                         match item.op {
@@ -134,7 +136,8 @@ impl Drawable {
                     }
                     let path = builder.build();
                     let weight = self.options.stroke_width;
-                    draw.path()
+                    self.draw
+                        .path()
                         .stroke()
                         .weight(weight)
                         .color(self.options.color)
@@ -164,9 +167,10 @@ impl Drawable {
                     //let weight = self.options.fill_weight;
                     let fill_rule = match self.shape.as_str() {
                         "curve" | "polygon" | "path" => FillRule::EvenOdd,
-                        _ => FillRule::NonZero
+                        _ => FillRule::NonZero,
                     };
-                    draw.path()
+                    self.draw
+                        .path()
                         .fill()
                         .fill_rule(fill_rule)
                         .color(self.options.fill_color)
@@ -193,10 +197,10 @@ impl Drawable {
                         }
                     }
                     let path = builder.build();
-                    let weight = self.options.fill_weight;
-                    draw.path()
+                    self.draw
+                        .path()
                         .stroke()
-                        .weight(weight)
+                        .weight(self.options.fill_weight)
                         .color(self.options.fill_color)
                         .events(path.iter());
                 }

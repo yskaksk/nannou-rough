@@ -12,12 +12,12 @@ fn view(app: &App, frame: Frame) {
         draw.background().color(BEIGE);
         let d = 250.0;
         let r = 400.0;
-        let mut rg = RoughGenerator::new();
-        rg.fill().fill_style("Hachure");
-        rg.ellipse(-d, d, r, r).draw(&draw);
-        rg.ellipse(-d, -d, r, r).draw(&draw);
-        rg.ellipse(d, -d, r, r).draw(&draw);
-        rg.ellipse(d, d, r, r).draw(&draw);
+        let mut rg = RoughGenerator::new(&draw);
+        rg.fill().fill_style("ZigZag");
+        rg.ellipse(-d, d, r, r).draw();
+        rg.ellipse(-d, -d, r, r).draw();
+        rg.ellipse(d, -d, r, r).draw();
+        rg.ellipse(d, d, r, r).draw();
     }
     draw.to_frame(app, &frame).unwrap();
 }

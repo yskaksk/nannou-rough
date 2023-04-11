@@ -57,6 +57,10 @@ impl Line {
             end: (self.end - center).rotate(angle) + center,
         };
     }
+
+    fn len(&self) -> f32 {
+        return (self.end - self.start).length_squared();
+    }
 }
 
 fn rotate_points(points: Vec<Point2>, center: Point2, degrees: f32) -> Vec<Point2> {
@@ -203,6 +207,41 @@ fn straight_hachure_lines(polygon_list: Vec<Vec<Point2>>, gap: f32) -> Vec<Line>
 
 impl PatternFiller for ZigzagFiller {
     fn fill_polygons(&self, polygon_list: Vec<Vec<Point2>>, o: &Options) -> OpSet {
-        unimplemented!()
+        let mut gap = if o.hachure_gap < 0.0 {
+            o.stroke_width * 4.0
+        } else {
+            o.hachure_gap
+        };
+        gap = gap.max(0.1);
+        let lines = polygon_hachure_lines(polygon_list, o);
+        let zigzag_angle = (PI / 180.0) * o.hachure_angle;
+        let mut zigzag_lines: Vec<Line> = vec![];
+        let dgx = gap * 0.5 * zigzag_angle.cos();
+        let dgy = gap * 0.5 * zigzag_angle.sin();
+
+        for l in lines.iter() {
+            if l.len() > 0.0 {
+                zigzag_lines.push(Line {
+                    start: pt2(l.start.x - dgx, l.start.y + dgy),
+                    end: l.end,
+                });
+                zigzag_lines.push(Line {
+                    start: pt2(l.start.x + dgx, l.start.y - dgy),
+                    end: l.end,
+                });
+            }
+        }
+        let ops = Vec::from_iter(
+            zigzag_lines
+                .iter()
+                .map(|l| _double_line(l.start.x, l.start.y, l.end.x, l.end.y, o)),
+        )
+        .into_iter()
+        .flatten()
+        .collect();
+        return OpSet {
+            ops_type: OpSetType::FillSketch,
+            ops,
+        };
     }
 }

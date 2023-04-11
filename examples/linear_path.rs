@@ -10,7 +10,7 @@ fn view(app: &App, frame: Frame) {
     let draw = app.draw();
     if frame.nth() == 0 {
         draw.background().color(BEIGE);
-        let mut rg = RoughGenerator::new();
+        let mut rg = RoughGenerator::new(&draw);
         let n = 5;
         let theta = 2.0 * f32::PI() / (n as f32);
         let points = Vec::from_iter((0..=n).map(|i| {
@@ -23,7 +23,7 @@ fn view(app: &App, frame: Frame) {
             .color(GREEN)
             .fill_color(ORANGE)
             .polygon(points)
-            .draw(&draw);
+            .draw();
     }
     draw.to_frame(app, &frame).unwrap();
 }

@@ -1,26 +1,29 @@
 use nannou::color::IntoLinSrgba;
 use nannou::prelude::*;
 
-use crate::core::{ColorScalar, Drawable, FillStyle, OpSet, Options, OpSetType};
+use crate::core::{ColorScalar, Drawable, FillStyle, OpSet, OpSetType, Options};
 use crate::renderer::{
     arc, ellipse_with_params, generate_ellipse_params, line, linear_path, pattern_fill_arc,
     pattern_fill_polygon, rectangle, solid_fill_polygon,
 };
 
-pub struct RoughGenerator {
+pub struct RoughGenerator<'a> {
     options: Options,
+    draw: &'a Draw,
 }
 
-impl RoughGenerator {
-    pub fn new() -> Self {
+impl<'a> RoughGenerator<'a> {
+    pub fn new(draw: &'a Draw) -> Self {
         return Self {
             options: Options::default(),
+            draw,
         };
     }
     pub fn fill_style(&mut self, style: &str) -> &mut Self {
         match style {
             "Solid" => self.options.fill_style = FillStyle::Solid,
             "Hachure" => self.options.fill_style = FillStyle::Hachure,
+            "ZigZag" => self.options.fill_style = FillStyle::Zigzag,
             _ => unimplemented!(),
         }
         return self;
@@ -67,6 +70,7 @@ impl RoughGenerator {
             "line",
             self.options,
             vec![line(x1, y1, x2, y2, &self.options)],
+            self.draw,
         )
     }
 
@@ -90,7 +94,7 @@ impl RoughGenerator {
             }
         }
         paths.push(outline);
-        Drawable::new("rectangle", self.options, paths)
+        Drawable::new("rectangle", self.options, paths, self.draw)
     }
 
     pub fn ellipse(&self, x: f32, y: f32, width: f32, height: f32) -> Drawable {
@@ -114,12 +118,12 @@ impl RoughGenerator {
             }
         }
         paths.push(ellipse_response.opset);
-        return Drawable::new("ellipse", self.options, paths);
+        return Drawable::new("ellipse", self.options, paths, self.draw);
     }
 
     pub fn linear_path(&self, points: Vec<Point2>) -> Drawable {
         let path = linear_path(points, false, &self.options);
-        return Drawable::new("linear_path", self.options, vec![path]);
+        return Drawable::new("linear_path", self.options, vec![path], self.draw);
     }
 
     pub fn polygon(&self, points: Vec<Point2>) -> Drawable {
@@ -135,7 +139,7 @@ impl RoughGenerator {
         }
         // TODO: add options.stroke
         paths.push(outline);
-        return Drawable::new("polygon", self.options, paths);
+        return Drawable::new("polygon", self.options, paths, self.draw);
     }
 
     pub fn arc(
@@ -180,6 +184,6 @@ impl RoughGenerator {
         }
         // TODO: stroke
         paths.push(outline);
-        return Drawable::new("arc", self.options, paths);
+        return Drawable::new("arc", self.options, paths, self.draw);
     }
 }

@@ -11,7 +11,7 @@ fn view(app: &App, frame: Frame) {
     let win = app.window_rect();
     if frame.nth() % 10 == 0 {
         draw.background().color(BEIGE);
-        let mut rg = RoughGenerator::new();
+        let mut rg = RoughGenerator::new(&draw);
         rg.fill()
             .fill_style("Hachure")
             .stroke_width(2.0)
@@ -36,7 +36,7 @@ fn view(app: &App, frame: Frame) {
                         y += win.h();
                     }
                     rg.rectangle(x, y, 0.9 * win.w() / n as f32, 0.9 * win.h() / n as f32)
-                        .draw(&draw);
+                        .draw();
                 }
             }
         }
