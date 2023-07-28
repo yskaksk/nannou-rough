@@ -13,6 +13,7 @@ pub trait PatternFiller {
 
 pub struct HachureFiller {}
 pub struct ZigzagFiller {}
+pub struct DashedFiller {}
 
 struct Line {
     start: Point2,
@@ -75,6 +76,7 @@ pub fn get_filler(options: &Options) -> Box<dyn PatternFiller> {
     match options.fill_style {
         FillStyle::Hachure => Box::new(HachureFiller {}),
         FillStyle::Zigzag => Box::new(ZigzagFiller {}),
+        FillStyle::Dashed => Box::new(DashedFiller {}),
         FillStyle::Solid => unreachable!(),
         _ => unimplemented!(),
     }
@@ -243,5 +245,33 @@ impl PatternFiller for ZigzagFiller {
             ops_type: OpSetType::FillSketch,
             ops,
         };
+    }
+}
+
+impl PatternFiller for DashedFiller {
+    fn fill_polygons(&self, polygon_list: Vec<Vec<Point2>>, o: &Options) -> OpSet {
+        let offset = if o.dash_offset < 0.0 {
+            if o.hachure_gap < 0.0 {
+                o.stroke_width * 4.0
+            } else {
+                o.hachure_gap
+            }
+        } else {
+            o.dash_offset
+        };
+        let gap = if o.dash_gap < 0.0 {
+            if o.hachure_gap < 0.0 {
+                o.stroke_width * 4.0
+            } else {
+                o.hachure_gap
+            }
+        } else {
+            o.dash_gap
+        };
+        let ops = Vec::from_iter(
+            polygon_list.iter().map(|l| {
+                let length = l.len();
+            })
+        );
     }
 }

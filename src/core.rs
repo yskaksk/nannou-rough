@@ -52,6 +52,8 @@ pub struct Options {
     pub curve_tightness: f32,
     pub color: LinSrgba<ColorScalar>,
     pub fill_color: LinSrgba<ColorScalar>,
+    pub dash_offset: f32,
+    pub dash_gap: f32,
 }
 
 impl Options {
@@ -77,6 +79,8 @@ impl Options {
             curve_tightness: 0.0,
             color: color::lin_srgba(0.0, 0.0, 0.0, 1.0),
             fill_color: color::lin_srgba(0.0, 0.0, 0.0, 1.0),
+            dash_offset: -1.0,
+            dash_gap: -1.0,
         };
     }
 }
